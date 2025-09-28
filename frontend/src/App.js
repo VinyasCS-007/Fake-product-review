@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CSSTransition, TransitionGroup } from 'react-transition-group';
-
+import './App.css';
 
 function App() {
   const [category, setCategory] = useState('Home_and_Kitchen_5');
@@ -9,16 +9,35 @@ function App() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [recentReviews, setRecentReviews] = useState([]);
+  const [activeTab, setActiveTab] = useState('analyzer');
+  const [isTyping, setIsTyping] = useState(false);
 
   // Dashboard summary
   const totalAnalyzed = recentReviews.length;
   const fakeCount = recentReviews.filter(r => r.result?.is_fake).length;
   const genuineCount = totalAnalyzed - fakeCount;
 
+  // Netflix-style hero banner texts
+  const heroTexts = [
+    "Detect Fake Reviews Like a Pro",
+    "AI-Powered Review Analysis",
+    "Protect Your Business from Fraud",
+    "Real-time Review Verification"
+  ];
+  const [currentHeroText, setCurrentHeroText] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentHeroText((prev) => (prev + 1) % heroTexts.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setResult(null);
+    
     try {
       const response = await fetch('http://localhost:5000/predict', {
         method: 'POST',
@@ -33,175 +52,295 @@ function App() {
           rating,
           review,
           result: data,
-          timestamp: new Date().toLocaleString()
+          timestamp: new Date().toLocaleString(),
+          id: Date.now()
         },
-        ...prev.slice(0, 9) // keep only last 10
+        ...prev.slice(0, 9)
       ]);
     } catch (error) {
-      setResult({ error: 'API error' });
+      setResult({ error: 'API error - Make sure backend is running on port 5000' });
     }
     setLoading(false);
   };
 
-
-  // Helper for confidence bar
+  // Netflix-style confidence bar
   const ConfidenceBar = ({ confidence }) => {
     const percent = Math.round(confidence * 100);
     return (
-      <div style={{ marginTop: 8 }}>
-        <div style={{ background: '#eee', borderRadius: 8, height: 16, width: '100%' }}>
-          <div style={{
-            width: `${percent}%`,
-            height: '100%',
-            background: percent > 70 ? '#e74c3c' : percent > 40 ? '#f1c40f' : '#2ecc71',
-            borderRadius: 8,
-            transition: 'width 0.5s'
-          }} />
+      <div className="confidence-container">
+        <div className="confidence-label">
+          AI Confidence: <span className="confidence-percent">{percent}%</span>
         </div>
-        <div style={{ fontSize: 12, color: '#555', marginTop: 2 }}>{percent}% confidence</div>
+        <div className="confidence-bar">
+          <div 
+            className="confidence-fill"
+            style={{ 
+              width: `${percent}%`,
+              background: percent > 70 ? '#e50914' : percent > 40 ? '#e87c03' : '#46d369'
+            }}
+          />
+        </div>
       </div>
     );
   };
 
-  return (
-    <div style={{ minHeight: '100vh', background: 'radial-gradient(circle at 20% 40%, #e0e7ff 0%, #f8fafc 100%)', padding: 0 }}>
-      <div style={{ maxWidth: 700, margin: '40px auto', padding: 24, background: 'rgba(255,255,255,0.95)', borderRadius: 24, boxShadow: '0 8px 32px rgba(99,102,241,0.12)' }}>
-        <h2 style={{ textAlign: 'center', color: '#6366f1', marginBottom: 24, fontWeight: 800, letterSpacing: 1 }}>🕵️‍♂️ Fake Product Review Dashboard</h2>
-
-        {/* Dashboard summary with animation */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
-          {[{label:'Total Analyzed',value:totalAnalyzed,color:'#6366f1'},{label:'Fake Reviews',value:fakeCount,color:'#e74c3c'},{label:'Genuine Reviews',value:genuineCount,color:'#2ecc71'}].map((stat, i) => (
-            <div key={stat.label} style={{ background: '#f3f4f6', borderRadius: 16, padding: 20, flex: 1, marginRight: i<2?12:0, textAlign: 'center', boxShadow: '0 2px 8px rgba(99,102,241,0.06)', transition: 'transform 0.3s', transform: 'scale(1)', animation: `fadeInStat 0.7s ${i*0.2}s both` }}>
-              <div style={{ fontSize: 17, color: stat.color, fontWeight: 700 }}>{stat.label}</div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: stat.color }}>{stat.value}</div>
-            </div>
-          ))}
+  // Netflix card component for reviews
+  const ReviewCard = ({ item, index }) => (
+    <div className="netflix-card" style={{ animationDelay: `${index * 0.1}s` }}>
+      <div className="card-header">
+        <div className="card-badge" style={{ 
+          background: item.result.is_fake ? '#e50914' : '#46d369' 
+        }}>
+          {item.result.is_fake ? 'FAKE' : 'GENUINE'}
         </div>
+        <div className="card-meta">
+          <span className="card-category">{item.category.replace('_5', '')}</span>
+          <span className="card-rating">⭐ {item.rating}</span>
+        </div>
+      </div>
+      
+      <div className="card-content">
+        <p className="review-text">{item.review}</p>
+      </div>
 
-        {/* Review analysis form with animated button */}
-        <form onSubmit={handleSubmit} style={{ animation: 'fadeInForm 0.8s 0.2s both' }}>
-          <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-            <select value={category} onChange={e => setCategory(e.target.value)} style={{ flex: 2, borderRadius: 8, border: '1px solid #cbd5e1', padding: 8, fontSize: 15 }}>
-              <option value="Home_and_Kitchen_5">Home & Kitchen</option>
-              <option value="Sports_5">Sports</option>
-              <option value="Office_5">Office</option>
-              <option value="Electronics_5">Electronics</option>
-              <option value="Other_5">Other</option>
-            </select>
-            <input type="number" min="1" max="5" step="0.1" value={rating} onChange={e => setRating(e.target.value)} style={{ flex: 1, borderRadius: 8, border: '1px solid #cbd5e1', padding: 8, fontSize: 15 }} placeholder="Rating" />
+      <div className="card-footer">
+        <div className="card-timestamp">{item.timestamp}</div>
+        {item.result.predicted_label && (
+          <div className="card-prediction">
+            Label: <strong>{item.result.predicted_label}</strong>
           </div>
-          <textarea
-            value={review}
-            onChange={e => setReview(e.target.value)}
-            rows={5}
-            style={{ width: '100%', borderRadius: 8, border: '1px solid #cbd5e1', padding: 12, fontSize: 16, resize: 'vertical', marginBottom: 12 }}
-            placeholder="Paste or type a product review here..."
-          />
-          <button
-            type="submit"
-            disabled={loading || !review}
-            style={{
-              background: loading ? 'linear-gradient(90deg,#6366f1,#60a5fa)' : 'linear-gradient(90deg,#6366f1,#2ecc71)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 8,
-              padding: '12px 28px',
-              fontSize: 18,
-              fontWeight: 700,
-              boxShadow: loading ? '0 0 12px #6366f1' : '0 0 8px #2ecc71',
-              cursor: loading || !review ? 'not-allowed' : 'pointer',
-              opacity: loading || !review ? 0.7 : 1,
-              marginTop: 4,
-              transition: 'all 0.3s',
-              animation: 'pulseBtn 1.2s infinite'
-            }}
-          >
-            {loading ? 'Checking...' : 'Analyze Review'}
-          </button>
-        </form>
+        )}
+        {item.result.confidence && item.result.confidence !== 'N/A' && (
+          <ConfidenceBar confidence={item.result.confidence} />
+        )}
+      </div>
+    </div>
+  );
 
-        {/* Current analysis result with animation */}
-        <TransitionGroup>
-          {result && (
-            <CSSTransition timeout={500} classNames="fade">
-              <div style={{ marginTop: 32, padding: 24, borderRadius: 16, background: result.is_fake ? 'rgba(231,76,60,0.08)' : 'rgba(46,204,113,0.08)', textAlign: 'center', boxShadow: '0 2px 12px rgba(99,102,241,0.08)', animation: 'fadeInResult 0.7s both' }}>
-                {result.error ? (
-                  <span style={{ color: '#e74c3c', fontWeight: 500 }}>{result.error}</span>
+  return (
+    <div className="netflix-app">
+      {/* Netflix-style Header */}
+      <header className="netflix-header">
+        <div className="header-content">
+          <div className="logo">
+            <span className="logo-icon">🔍</span>
+            <span className="logo-text">ReviewDetect</span>
+          </div>
+          <nav className="nav-tabs">
+            <button 
+              className={`nav-tab ${activeTab === 'analyzer' ? 'active' : ''}`}
+              onClick={() => setActiveTab('analyzer')}
+            >
+              Analyzer
+            </button>
+            <button 
+              className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
+              onClick={() => setActiveTab('dashboard')}
+            >
+              Dashboard
+            </button>
+            <button 
+              className={`nav-tab ${activeTab === 'history' ? 'active' : ''}`}
+              onClick={() => setActiveTab('history')}
+            >
+              History
+            </button>
+          </nav>
+        </div>
+      </header>
+
+      {/* Hero Banner */}
+      <section className="hero-banner">
+        <div className="hero-content">
+          <h1 className="hero-title">
+            <span className="hero-text-slide">
+              {heroTexts[currentHeroText]}
+            </span>
+          </h1>
+          <p className="hero-subtitle">
+            Advanced AI technology to identify suspicious product reviews and protect consumers
+          </p>
+        </div>
+        <div className="hero-gradient"></div>
+      </section>
+
+      {/* Main Content */}
+      <main className="main-content">
+        {/* Stats Overview */}
+        <section className="stats-section">
+          <div className="stats-grid">
+            <div className="stat-card stat-total">
+              <div className="stat-icon">📊</div>
+              <div className="stat-content">
+                <div className="stat-value">{totalAnalyzed}</div>
+                <div className="stat-label">Total Analyzed</div>
+              </div>
+            </div>
+            <div className="stat-card stat-fake">
+              <div className="stat-icon">🚨</div>
+              <div className="stat-content">
+                <div className="stat-value">{fakeCount}</div>
+                <div className="stat-label">Fake Reviews</div>
+              </div>
+            </div>
+            <div className="stat-card stat-genuine">
+              <div className="stat-icon">✅</div>
+              <div className="stat-content">
+                <div className="stat-value">{genuineCount}</div>
+                <div className="stat-label">Genuine Reviews</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Analyzer Section */}
+        <section className="analyzer-section">
+          <div className="section-header">
+            <h2>Review Analyzer</h2>
+            <p>Paste or type a product review to check its authenticity</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="analyzer-form">
+            <div className="form-row">
+              <div className="form-group category-select">
+                <label>Product Category</label>
+                <select 
+                  value={category} 
+                  onChange={e => setCategory(e.target.value)}
+                  className="netflix-select"
+                >
+                  <option value="Home_and_Kitchen_5">🏠 Home & Kitchen</option>
+                  <option value="Sports_5">⚽ Sports</option>
+                  <option value="Office_5">💼 Office</option>
+                  <option value="Electronics_5">📱 Electronics</option>
+                  <option value="Other_5">📦 Other</option>
+                </select>
+              </div>
+              
+              <div className="form-group rating-input">
+                <label>Rating</label>
+                <input 
+                  type="number" 
+                  min="1" 
+                  max="5" 
+                  step="0.1" 
+                  value={rating} 
+                  onChange={e => setRating(e.target.value)}
+                  className="netflix-input"
+                  placeholder="5.0"
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Review Text</label>
+              <textarea
+                value={review}
+                onChange={(e) => {
+                  setReview(e.target.value);
+                  setIsTyping(true);
+                  setTimeout(() => setIsTyping(false), 1000);
+                }}
+                rows={6}
+                className={`netflix-textarea ${isTyping ? 'typing' : ''}`}
+                placeholder="Type or paste the product review here for analysis..."
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading || !review}
+              className={`analyze-btn ${loading ? 'loading' : ''} ${!review ? 'disabled' : ''}`}
+            >
+              <span className="btn-content">
+                {loading ? (
+                  <>
+                    <div className="spinner"></div>
+                    Analyzing...
+                  </>
                 ) : (
                   <>
-                    <div style={{ fontSize: 22, fontWeight: 700, color: result.is_fake ? '#e74c3c' : '#2ecc71', marginBottom: 8 }}>
-                      {result.is_fake ? '🚨 Fake Review Detected' : '✅ Review Seems Genuine'}
-                    </div>
-                    {result.predicted_label && (
-                      <div style={{ fontSize: 15, color: '#6366f1', marginBottom: 8 }}>
-                        <strong>Predicted Label:</strong> {result.predicted_label}
-                      </div>
-                    )}
-                    {result.confidence && result.confidence !== 'N/A' && (
-                      <ConfidenceBar confidence={result.confidence} />
-                    )}
+                    🕵️‍♂️ Analyze Review
                   </>
                 )}
-              </div>
-            </CSSTransition>
-          )}
-        </TransitionGroup>
+              </span>
+            </button>
+          </form>
 
-        {/* Recent analyzed reviews with animation */}
-        <div style={{ marginTop: 40 }}>
-          <h3 style={{ color: '#6366f1', marginBottom: 12, fontWeight: 700, letterSpacing: 1 }}>Recent Analyzed Reviews</h3>
-          {recentReviews.length === 0 ? (
-            <div style={{ color: '#94a3b8', fontSize: 15 }}>No reviews analyzed yet.</div>
-          ) : (
-            <div style={{ maxHeight: 260, overflowY: 'auto' }}>
-              <TransitionGroup>
-                {recentReviews.map((item, idx) => (
-                  <CSSTransition key={idx} timeout={500} classNames="fade">
-                    <div style={{
-                      background: '#fff',
-                      borderRadius: 12,
-                      boxShadow: '0 2px 8px rgba(99,102,241,0.06)',
-                      marginBottom: 14,
-                      padding: 18,
-                      borderLeft: `6px solid ${item.result.is_fake ? '#e74c3c' : '#2ecc71'}`,
-                      animation: 'fadeInReview 0.7s both'
-                    }}>
-                      <div style={{ fontSize: 15, color: '#6366f1', fontWeight: 500 }}>{item.timestamp}</div>
-                      <div style={{ fontSize: 15, margin: '4px 0', color: '#6366f1' }}><strong>Category:</strong> {item.category} <strong>Rating:</strong> {item.rating}</div>
-                      <div style={{ fontSize: 16, margin: '8px 0' }}><strong>Review:</strong> {item.review}</div>
-                      <div style={{ fontWeight: 600, color: item.result.is_fake ? '#e74c3c' : '#2ecc71' }}>
-                        {item.result.is_fake ? 'Fake' : 'Genuine'}
-                      </div>
-                      {item.result.predicted_label && (
-                        <div style={{ fontSize: 14, color: '#6366f1', marginBottom: 4 }}>
-                          <strong>Predicted Label:</strong> {item.result.predicted_label}
+          {/* Results */}
+          <TransitionGroup>
+            {result && (
+              <CSSTransition timeout={500} classNames="result-transition">
+                <div className={`result-card ${result.is_fake ? 'fake' : 'genuine'}`}>
+                  <div className="result-header">
+                    <div className="result-icon">
+                      {result.is_fake ? '🚨' : '✅'}
+                    </div>
+                    <div className="result-title">
+                      {result.is_fake ? 'Fake Review Detected' : 'Genuine Review'}
+                    </div>
+                  </div>
+                  
+                  {!result.error && (
+                    <div className="result-details">
+                      {result.predicted_label && (
+                        <div className="result-meta">
+                          <strong>AI Prediction:</strong> {result.predicted_label}
                         </div>
                       )}
-                      {item.result.confidence && item.result.confidence !== 'N/A' && (
-                        <ConfidenceBar confidence={item.result.confidence} />
+                      {result.confidence && result.confidence !== 'N/A' && (
+                        <ConfidenceBar confidence={result.confidence} />
                       )}
                     </div>
+                  )}
+                  
+                  {result.error && (
+                    <div className="result-error">
+                      {result.error}
+                    </div>
+                  )}
+                </div>
+              </CSSTransition>
+            )}
+          </TransitionGroup>
+        </section>
+
+        {/* Recent Reviews Section */}
+        <section className="recent-section">
+          <div className="section-header">
+            <h2>Recent Analysis</h2>
+            <p>Last {recentReviews.length} reviews analyzed</p>
+          </div>
+
+          {recentReviews.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-icon">🔍</div>
+              <h3>No Reviews Analyzed Yet</h3>
+              <p>Submit your first review to see the analysis results here</p>
+            </div>
+          ) : (
+            <div className="cards-grid">
+              <TransitionGroup component={null}>
+                {recentReviews.map((item, index) => (
+                  <CSSTransition key={item.id} timeout={500} classNames="card-transition">
+                    <ReviewCard item={item} index={index} />
                   </CSSTransition>
                 ))}
               </TransitionGroup>
             </div>
           )}
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="netflix-footer">
+        <div className="footer-content">
+          <div className="footer-logo">ReviewDetect</div>
+          <div className="footer-copyright">
+            &copy; {new Date().getFullYear()} Fake Product Review Detection System
+          </div>
         </div>
-      </div>
-      <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, marginTop: 24 }}>
-        &copy; {new Date().getFullYear()} Fake Product Review System
-      </div>
-      <style>{`
-        @keyframes fadeInStat { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
-        @keyframes fadeInForm { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeInResult { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-        @keyframes fadeInReview { from { opacity: 0; transform: translateX(-20px) scale(0.95); } to { opacity: 1; transform: translateX(0) scale(1); } }
-        @keyframes pulseBtn { 0% { box-shadow: 0 0 8px #6366f1; } 50% { box-shadow: 0 0 16px #60a5fa; } 100% { box-shadow: 0 0 8px #6366f1; } }
-        .fade-enter { opacity: 0; }
-        .fade-enter-active { opacity: 1; transition: opacity 500ms; }
-        .fade-exit { opacity: 1; }
-        .fade-exit-active { opacity: 0; transition: opacity 500ms; }
-      `}</style>
+      </footer>
     </div>
   );
 }
