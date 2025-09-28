@@ -1,3 +1,59 @@
+## How to Run the Backend (Flask)
+1. Open a terminal and navigate to the `backend` folder:
+  ```sh
+  cd backend
+  ```
+2. Install dependencies:
+  ```sh
+  pip install -r requirements.txt
+  ```
+3. Start the Flask server:
+  ```sh
+  python app.py
+  ```
+  The API will run at `http://127.0.0.1:5000`.
+
+## How to Run the Frontend (React)
+1. Open a terminal and navigate to the `frontend` folder:
+  ```sh
+  cd frontend
+  ```
+2. Install dependencies:
+  ```sh
+  npm install
+  ```
+3. Start the React app:
+  ```sh
+  npm start
+  ```
+  The dashboard will run at `http://localhost:3000`.
+
+## How to Use
+- Open the React dashboard in your browser.
+- Enter a product review and submit to analyze if it is fake or genuine.
+- View recent analyzed reviews and dashboard statistics.
+
+## Training the Model
+- Use the provided Jupyter notebook to preprocess data and train a model.
+- Save the trained model (e.g., as `model.pkl`) and update the Flask backend to use it for predictions.
+
+## Pushing to GitHub
+1. Add all files:
+  ```sh
+  git add .
+  ```
+2. Commit:
+  ```sh
+  git commit -m "Add working code and resources"
+  ```
+3. Push:
+  ```sh
+  git push -u origin main
+  ```
+
+## Notes
+- For production, use a proper WSGI server for Flask and build the React app.
+- Add a `.gitignore` to exclude unnecessary files (e.g., `node_modules`, `.env`).
 # Fake-Reviews-Detection
 
 ## Problem Statement
